@@ -20,20 +20,28 @@
 
 package 'git'
 package 'screen'
-package 'mariadb-server'
 package 'libtool-ltdl-devel'
 
-service 'mariadb' do
-  action :start
+yum_repository 'mariadb-10.0' do
+  baseurl 'https://downloads.mariadb.com/files/MariaDB/yum/10.0/centos/7/x86_64'
+  gpgkey 'https://yum.mariadb.org/RPM-GPG-KEY-MariaDB'
+  enabled true
+  action :create
 end
 
 include_recipe 'build-essential'
+include_recipe 'mariadb::server'
 include_recipe 'rabbitmq'
 include_recipe 'golang'
 
 chef_gem 'rest-client' do
   action :install
   compile_time false
+end
+
+# https://github.com/letsencrypt/boulder/pull/1071
+bash 'set_hosts' do
+  code '/bin/echo 127.0.0.1 localhost > /etc/hosts'
 end
 
 boulderdir = "#{node['go']['gopath']}/src/github.com/letsencrypt/boulder"

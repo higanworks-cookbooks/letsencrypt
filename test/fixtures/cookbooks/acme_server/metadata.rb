@@ -8,4 +8,6 @@ version          '0.1.0'
 
 depends          'golang'
 depends          'rabbitmq'
+depends          'mariadb'
 depends          'build-essential'
+depends          'yum'
