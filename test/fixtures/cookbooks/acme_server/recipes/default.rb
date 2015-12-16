@@ -24,7 +24,6 @@ package 'libtool-ltdl-devel'
 package 'initscripts'
 package 'logrotate'
 package 'tar'
-package 'python'
 
 yum_repository 'mariadb-10.0' do
   baseurl 'https://downloads.mariadb.com/files/MariaDB/yum/10.0/centos/7/x86_64'
@@ -78,7 +77,7 @@ end
 
 bash 'run_boulder' do
   cwd boulderdir
-  code 'source /etc/profile.d/golang.sh && /bin/screen -dmS boulder ./start.py'
+  code 'source /etc/profile.d/golang.sh && /bin/screen -LdmS boulder ./start.py'
   not_if '/bin/screen -list boulder | /bin/grep 1\ Socket\ in'
 end
 
@@ -92,8 +91,10 @@ ruby_block 'wait_for_bootstrap' do
         client = RestClient.get 'http://127.0.0.1:4000/directory'
       rescue
         sleep 10
+        abcd = ::File.read '/opt/go/src/github.com/letsencrypt/boulder/screenlog.0'
+        puts abcd
       end
-      Chef::Application.fatal!('Failed to run boulder server') if times > 180
+      Chef::Application.fatal!('Failed to run boulder server') if times > 30
       break if client && client.code == 200
     end
   end
