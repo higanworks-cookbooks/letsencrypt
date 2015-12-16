@@ -20,67 +20,53 @@
 
 package 'git'
 package 'screen'
+package 'mariadb-server'
+package 'libtool-ltdl-devel'
 
-include_recipe 'yum'
+service 'mariadb' do
+  action :start
+end
+
 include_recipe 'build-essential'
-include_recipe 'sysctl::default'
+include_recipe 'rabbitmq'
+include_recipe 'golang'
 
 chef_gem 'rest-client' do
   action :install
   compile_time false
 end
 
-# nginx package is broken
-# https://www.centos.org/forums/viewtopic.php?f=47&t=55325
-yum_repository 'CentOS-CR' do
-  baseurl 'http://mirror.centos.org/centos/$releasever/cr/$basearch/'
-  gpgkey 'file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7'
-  enabled true
-  action :create
+boulderdir = "#{node['go']['gopath']}/src/github.com/letsencrypt/boulder"
+
+directory ::File.dirname boulderdir do
+  recursive true
 end
 
-sysctl_param 'net.ipv6.conf.all.disable_ipv6' do
-  value 1
-end
-
-sysctl_param 'net.ipv6.conf.default.disable_ipv6' do
-  value 1
-end
-
-docker_service 'default' do
-  action [:create, :start]
-end
-
-directory '/usr/local/src/boulder'
-
-git '/usr/local/src/boulder' do
+git boulderdir do
   repository 'https://github.com/letsencrypt/boulder'
-  revision 'a2632fa155b52e7fb3cdbac122919f391cb7435b'
+  revision '8e6f13f189d7e7feb0f5407a9a9c63f3b644f730'
   action :checkout
 end
 
-cookbook_file '/usr/local/src/boulder/test/boulder-config.json' do
-  source 'boulder-config.json'
-end
-
-ruby_block 'fix_dockerfile' do
+ruby_block 'boulder_config' do
   block do
-    file = Chef::Util::FileEdit.new('/usr/local/src/boulder/Dockerfile')
-    file.search_file_delete_line(/requirements.txt/)
-    file.write_file
+    config = ::JSON.parse ::File.read "#{boulderdir}/test/boulder-config.json"
+    config['va']['portConfig']['httpPort'] = 80
+    config['va']['portConfig']['httpsPort'] = 443
+    config['va']['portConfig']['tlsPort'] = 443
+    ::File.write("#{boulderdir}/test/boulder-config.json", ::JSON.pretty_generate(config))
   end
 end
 
-ruby_block 'fix_fake_dns' do
-  block do
-    file = Chef::Util::FileEdit.new('/usr/local/src/boulder/test/dns-test-srv/main.go')
-    file.search_file_replace(/"127.0.0.1"/, '"192.168.1.40"')
-    file.write_file
-  end
+bash 'setup' do
+  cwd boulderdir
+  code 'source /etc/profile.d/golang.sh && ./test/setup.sh && touch setup.done'
+  not_if { ::File.exist? "#{boulderdir}/setup.done" }
 end
 
 bash 'run_boulder' do
-  code '/bin/screen -dmS boulder /usr/local/src/boulder/test/run-docker.sh'
+  cwd boulderdir
+  code 'source /etc/profile.d/golang.sh && /bin/screen -dmS boulder ./start.py'
   not_if '/bin/screen -list boulder | /bin/grep 1\ Socket\ in'
 end
 
@@ -95,7 +81,8 @@ ruby_block 'wait_for_bootstrap' do
       rescue
         sleep 10
       end
-      break if times > 180 || (client && client.code == 200)
+      Chef::Application.fatal!('Failed to run boulder server') if times > 180
+      break if client && client.code == 200
     end
   end
 end
