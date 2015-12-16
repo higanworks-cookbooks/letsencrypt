@@ -71,6 +71,7 @@ ruby_block 'boulder_config' do
     ::File.write("#{boulderdir}/test/boulder-config.json", ::JSON.pretty_generate(config))
 
     config = ::JSON.parse ::File.read "#{boulderdir}/test/issuer-ocsp-responder.json"
+    config['syslog'] = {}
     config['syslog']['network'] = 'udp'
     config['syslog']['server'] = 'localhost:514'
     ::File.write("#{boulderdir}/test/issuer-ocsp-responder.json", ::JSON.pretty_generate(config))
@@ -88,6 +89,7 @@ ruby_block 'read_log' do
     abcd = ::File.read '/tmp/log.txt'
     puts abcd
   end
+  only_if { ::File.exist? '/tmp/log.txt' }
 end
 
 bash 'run_boulder' do
