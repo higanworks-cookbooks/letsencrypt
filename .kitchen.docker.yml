@@ -25,6 +25,8 @@ driver:
 
 platforms:
 - name: centos-7
+  driver_config:
+    image: milcom/centos7-systemd
 
 suites:
 - name: default
