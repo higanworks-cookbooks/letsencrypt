@@ -23,6 +23,7 @@ package 'screen'
 package 'libtool-ltdl-devel'
 package 'initscripts'
 package 'logrotate'
+package 'tar'
 
 yum_repository 'mariadb-10.0' do
   baseurl 'https://downloads.mariadb.com/files/MariaDB/yum/10.0/centos/7/x86_64'
