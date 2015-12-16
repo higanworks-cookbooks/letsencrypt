@@ -66,14 +66,28 @@ ruby_block 'boulder_config' do
     config['va']['portConfig']['httpPort'] = 80
     config['va']['portConfig']['httpsPort'] = 443
     config['va']['portConfig']['tlsPort'] = 443
+    config['syslog']['network'] = 'udp'
+    config['syslog']['server'] = 'localhost:514'
     ::File.write("#{boulderdir}/test/boulder-config.json", ::JSON.pretty_generate(config))
+
+    config = ::JSON.parse ::File.read "#{boulderdir}/test/issuer-ocsp-responder.json"
+    config['syslog']['network'] = 'udp'
+    config['syslog']['server'] = 'localhost:514'
+    ::File.write("#{boulderdir}/test/issuer-ocsp-responder.json", ::JSON.pretty_generate(config))
   end
 end
 
 bash 'setup' do
   cwd boulderdir
-  code 'source /etc/profile.d/golang.sh && ./test/setup.sh && touch setup.done'
+  code 'source /etc/profile.d/golang.sh && ./test/setup.sh > /tmp/log.txt 2>&1 && touch setup.done'
   not_if { ::File.exist? "#{boulderdir}/setup.done" }
+end
+
+ruby_block 'read_log' do
+  block do
+    abcd = ::File.read '/tmp/log.txt'
+    puts abcd
+  end
 end
 
 bash 'run_boulder' do
