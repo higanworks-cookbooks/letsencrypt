@@ -21,7 +21,7 @@ source 'https://rubygems.org'
 
 group :test do
   gem 'rake'
-  gem 'berkshelf', '~> 3.1'
+  gem 'berkshelf', '~> 4.0'
 end
 
 group :style do
